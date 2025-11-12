@@ -2,6 +2,10 @@
 
 A full-stack blockchain healthcare application with user authentication, patient data access control, and IPFS file storage.
 
+## 🚀 New to Coding? Start Here!
+
+**👉 Read `START_HERE.md` first!** It's a beginner-friendly guide that walks you through everything step-by-step.
+
 ## Architecture
 
 - **Authentication:** DynamoDB (AWS) - Traditional username/password for better UX
