@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+// Use DynamoDB User model instead of MongoDB
+const User = require('../models/UserDynamoDB');
 const { authenticateToken } = require('../middleware/auth');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -22,21 +23,18 @@ router.post('/register', async (req, res) => {
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }]
-    });
+    const existingUser = await User.findByEmailOrUsername(email, username);
 
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists with this email or username' });
     }
 
     // Create new user
-    const user = new User({ username, email, password });
-    await user.save();
+    const user = await User.create({ username, email, password });
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user._id, username: user.username, email: user.email },
+      { userId: user.username, username: user.username, email: user.email },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
@@ -45,7 +43,7 @@ router.post('/register', async (req, res) => {
       message: 'User registered successfully',
       token,
       user: {
-        id: user._id,
+        id: user.username,
         username: user.username,
         email: user.email
       }
@@ -67,20 +65,20 @@ router.post('/login', async (req, res) => {
     }
 
     // Find user
-    const user = await User.findOne({ email });
+    const user = await User.findByEmail(email);
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Check password
-    const isPasswordValid = await user.comparePassword(password);
+    const isPasswordValid = await User.comparePassword(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user._id, username: user.username, email: user.email },
+      { userId: user.username, username: user.username, email: user.email },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
@@ -89,7 +87,7 @@ router.post('/login', async (req, res) => {
       message: 'Login successful',
       token,
       user: {
-        id: user._id,
+        id: user.username,
         username: user.username,
         email: user.email
       }
@@ -110,13 +108,15 @@ router.post('/logout', authenticateToken, (req, res) => {
 // Get current user
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select('-password');
+    const user = await User.findById(req.user.userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+    // Remove password from response
+    const { password, ...userWithoutPassword } = user;
     res.json({
       user: {
-        id: user._id,
+        id: user.username,
         username: user.username,
         email: user.email
       }

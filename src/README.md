@@ -1,43 +1,14 @@
 # HealthChain Access Control
 
-A full-stack application for managing patient data access control on the blockchain, with user authentication and IPFS image upload capabilities.
+A full-stack blockchain healthcare application with user authentication, patient data access control, and IPFS file storage.
 
-## Features
+## Architecture
 
-✅ **User Authentication**
-- User registration
-- Login/Logout functionality
-- JWT-based session management
-- Protected routes
-
-✅ **IPFS Image Upload**
-- Upload images to IPFS via Pinata
-- Image preview before upload
-- View uploaded images via IPFS gateway
-
-✅ **Blockchain Integration**
-- Web3 integration with MetaMask
-- Smart contract interaction
-- Patient data access control
-
-## Project Structure
-
-```
-healthchain-access-control/
-├── backend/              # Node.js/Express backend server
-│   ├── models/          # MongoDB models
-│   ├── routes/          # API routes
-│   ├── middleware/      # Authentication middleware
-│   └── server.js        # Main server file
-├── app/                 # React frontend application
-│   ├── src/
-│   │   ├── components/  # React components
-│   │   ├── services/    # API service layer
-│   │   └── App.js       # Main app component
-│   └── package.json
-├── smart_contract/      # Solidity smart contracts
-└── SETUP_GUIDE.md       # Detailed setup instructions
-```
+- **Authentication:** DynamoDB (AWS) - Traditional username/password for better UX
+- **Healthcare Data:** Blockchain (Ethereum) - Immutable patient records and access control
+- **File Storage:** IPFS (Pinata) - Decentralized file storage with encryption
+- **Frontend:** React - User interface
+- **Backend:** Express/Node.js - API server
 
 ## Quick Start
 
@@ -46,8 +17,22 @@ healthchain-access-control/
 ```bash
 cd backend
 npm install
-cp .env.example .env
-# Edit .env with your MongoDB and Pinata credentials
+```
+
+Follow `backend/DYNAMODB_SETUP.md` to set up DynamoDB.
+
+Create `.env`:
+```env
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your-key
+AWS_SECRET_ACCESS_KEY=your-secret
+DYNAMODB_TABLE_NAME=healthchain-users
+JWT_SECRET=your-secret
+PINATA_JWT=your-pinata-token
+PORT=5000
+```
+
+```bash
 npm run dev
 ```
 
@@ -56,91 +41,59 @@ npm run dev
 ```bash
 cd app
 npm install
-# Create .env file with REACT_APP_API_URL=http://localhost:5000/api
-npm start
 ```
 
-## Detailed Setup
-
-For complete setup instructions including:
-- MongoDB Atlas configuration
-- Pinata IPFS setup
-- Environment variable configuration
-- Troubleshooting
-
-See [SETUP_GUIDE.md](./SETUP_GUIDE.md)
-
-## Technology Stack
-
-### Backend
-- **Node.js** - Runtime environment
-- **Express** - Web framework
-- **MongoDB** - Database (via Mongoose)
-- **JWT** - Authentication
-- **Pinata** - IPFS pinning service
-
-### Frontend
-- **React** - UI framework
-- **Axios** - HTTP client
-- **Web3** - Blockchain integration
-
-## API Documentation
-
-### Authentication Endpoints
-
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `POST /api/auth/logout` - Logout user
-- `GET /api/auth/me` - Get current user info
-
-### IPFS Endpoints
-
-- `POST /api/ipfs/upload` - Upload image to IPFS (requires auth)
-- `GET /api/ipfs/info/:hash` - Get IPFS file info (requires auth)
-
-## Environment Variables
-
-### Backend (.env)
-```
-MONGODB_URI=your-mongodb-connection-string
-JWT_SECRET=your-secret-key
-PINATA_JWT=your-pinata-jwt-token
-PORT=5000
-```
-
-### Frontend (.env)
-```
+Create `.env`:
+```env
 REACT_APP_API_URL=http://localhost:5000/api
 ```
 
-## Getting MongoDB Connection String
-
-1. Sign up at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-2. Create a free cluster
-3. Create database user
-4. Whitelist your IP
-5. Get connection string from "Connect" → "Connect your application"
-
-## Getting Pinata Credentials
-
-1. Sign up at [Pinata](https://www.pinata.cloud/)
-2. Go to API Keys
-3. Create new key with `pinFileToIPFS` permission
-4. Copy JWT token
-
-## Development
-
 ```bash
-# Backend (Terminal 1)
-cd backend
-npm run dev
-
-# Frontend (Terminal 2)
-cd app
 npm start
 ```
+
+### 3. Smart Contract
+
+```bash
+cd smart_contract
+truffle compile
+truffle migrate
+```
+
+## Deployment
+
+- **Frontend:** Deploy to AWS Amplify (see `AWS_AMPLIFY_SETUP.md`)
+- **Backend:** Deploy to EC2 (see `AWS_EC2_SETUP.md`)
+- **Quick Guide:** See `QUICK_DEPLOY.md`
+
+## Documentation
+
+- `SETUP_GUIDE.md` - Complete setup instructions
+- `QUICK_DEPLOY.md` - Fastest deployment path
+- `DEPLOYMENT_GUIDE.md` - Detailed deployment guide
+- `FINAL_CLARITY.md` - What we're using (clear summary)
+- `EC2_AMPLIFY_EXPLAINED.md` - EC2 and Amplify explained
+- `CURRENT_SETUP.md` - Current implementation status
+
+## Features
+
+- ✅ User authentication (register/login/logout)
+- ✅ Patient data access control on blockchain
+- ✅ Expiration-based access grants
+- ✅ Emergency access requests
+- ✅ Comprehensive audit logging
+- ✅ IPFS file upload with encryption
+- ✅ File list and download
+- ✅ Audit log viewer with filters
+
+## Tech Stack
+
+- **Frontend:** React, Web3.js, Axios, Crypto-JS
+- **Backend:** Express, DynamoDB, JWT, Multer
+- **Blockchain:** Solidity, Truffle, Web3
+- **Storage:** IPFS (Pinata), DynamoDB
+- **Deployment:** AWS Amplify, EC2
 
 ## License
 
 This project is part of the HealthChain Access Control system.
-
