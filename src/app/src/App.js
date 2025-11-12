@@ -5,6 +5,8 @@ import ContractArtifact from "./PatientDataAccess.json";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import IPFSUpload from "./components/IPFSUpload";
+import FileList from "./components/FileList";
+import AuditLogViewer from "./components/AuditLogViewer";
 import { authAPI } from "./services/api";
 
 function App() {
@@ -19,7 +21,16 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [showRegister, setShowRegister] = useState(false);
-  const [activeTab, setActiveTab] = useState("blockchain"); // 'blockchain' or 'ipfs'
+  const [activeTab, setActiveTab] = useState("blockchain");
+
+  // New state for expiration and emergency access
+  const [expiryDate, setExpiryDate] = useState("");
+  const [expiryTime, setExpiryTime] = useState("");
+  const [emergencyReason, setEmergencyReason] = useState("");
+  const [emergencyRequests, setEmergencyRequests] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [accessStatus, setAccessStatus] = useState(null);
+  const [expirationCountdown, setExpirationCountdown] = useState(null);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -29,7 +40,6 @@ function App() {
     if (token && savedUser) {
       setIsAuthenticated(true);
       setUser(JSON.parse(savedUser));
-      // Verify token is still valid
       authAPI.getMe().catch(() => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -75,6 +85,15 @@ function App() {
     loadBlockchain();
   }, []);
 
+  // Check access status periodically for countdown
+  useEffect(() => {
+    if (contract && patientID && providerAddress) {
+      checkAccessStatus();
+      const interval = setInterval(checkAccessStatus, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [contract, patientID, providerAddress]);
+
   const handleLoginSuccess = (userData) => {
     setIsAuthenticated(true);
     setUser(userData);
@@ -101,6 +120,12 @@ function App() {
   };
 
   const registerPatient = async () => {
+    if (!contract || !account) {
+      setMessage("Please connect your wallet first.");
+      return;
+    }
+    
+    setLoading(true);
     try {
       await contract.methods
         .registerPatient(patientID, "Daksh", 25)
@@ -108,45 +133,205 @@ function App() {
       setMessage("Patient registered successfully.");
     } catch (error) {
       console.error(error);
-      setMessage("Failed to register patient.");
+      setMessage("Failed to register patient: " + (error.message || "Unknown error"));
+    } finally {
+      setLoading(false);
     }
   };
 
   const grantAccess = async () => {
+    if (!contract || !account) {
+      setMessage("Please connect your wallet first.");
+      return;
+    }
+    
+    setLoading(true);
     try {
       await contract.methods
         .grantAccess(patientID, providerAddress)
         .send({ from: account });
-      setMessage("Access granted successfully.");
+      setMessage("Access granted successfully (permanent).");
+      checkAccessStatus();
     } catch (error) {
       console.error(error);
-      setMessage("Failed to grant access.");
+      setMessage("Failed to grant access: " + (error.message || "Unknown error"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const grantAccessWithExpiry = async () => {
+    if (!contract || !account) {
+      setMessage("Please connect your wallet first.");
+      return;
+    }
+
+    if (!expiryDate || !expiryTime) {
+      setMessage("Please select expiration date and time.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const expiryDateTime = new Date(`${expiryDate}T${expiryTime}`);
+      const now = new Date();
+      const expiryDurationSeconds = Math.floor((expiryDateTime.getTime() - now.getTime()) / 1000);
+
+      if (expiryDurationSeconds <= 0) {
+        setMessage("Expiration time must be in the future.");
+        setLoading(false);
+        return;
+      }
+
+      await contract.methods
+        .grantAccessWithExpiry(patientID, providerAddress, expiryDurationSeconds)
+        .send({ from: account });
+      setMessage(`Access granted successfully. Expires on ${expiryDateTime.toLocaleString()}.`);
+      checkAccessStatus();
+    } catch (error) {
+      console.error(error);
+      setMessage("Failed to grant access: " + (error.message || "Unknown error"));
+    } finally {
+      setLoading(false);
     }
   };
 
   const revokeAccess = async () => {
+    if (!contract || !account) {
+      setMessage("Please connect your wallet first.");
+      return;
+    }
+    
+    setLoading(true);
     try {
       await contract.methods
         .revokeAccess(patientID, providerAddress)
         .send({ from: account });
       setMessage("Access revoked successfully.");
+      checkAccessStatus();
     } catch (error) {
       console.error(error);
-      setMessage("Failed to revoke access.");
+      setMessage("Failed to revoke access: " + (error.message || "Unknown error"));
+    } finally {
+      setLoading(false);
     }
   };
 
   const checkAccess = async () => {
+    if (!contract) {
+      setMessage("Please connect your wallet first.");
+      return;
+    }
+    
+    setLoading(true);
     try {
       const result = await contract.methods
         .checkAccess(patientID, providerAddress)
         .call();
-      setMessage(`Access for provider: ${result}`);
+      setMessage(`Access for provider: ${result ? "GRANTED" : "DENIED"}`);
+      checkAccessStatus();
     } catch (error) {
       console.error(error);
-      setMessage("Failed to check access.");
+      setMessage("Failed to check access: " + (error.message || "Unknown error"));
+    } finally {
+      setLoading(false);
     }
   };
+
+  const checkAccessStatus = async () => {
+    if (!contract || !patientID || !providerAddress) return;
+    
+    try {
+      const hasAccess = await contract.methods
+        .checkAccess(patientID, providerAddress)
+        .call();
+      
+      setAccessStatus(hasAccess);
+      
+      // Note: Getting expiration time would require additional contract function
+      // For now, we just show if access is granted
+    } catch (error) {
+      console.error('Error checking access status:', error);
+    }
+  };
+
+  const requestEmergencyAccess = async () => {
+    if (!contract || !account) {
+      setMessage("Please connect your wallet first.");
+      return;
+    }
+
+    if (!emergencyReason.trim()) {
+      setMessage("Please provide a reason for emergency access.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await contract.methods
+        .requestEmergencyAccess(patientID, emergencyReason)
+        .send({ from: account });
+      setMessage("Emergency access requested successfully.");
+      setEmergencyReason("");
+      fetchEmergencyRequests();
+    } catch (error) {
+      console.error(error);
+      setMessage("Failed to request emergency access: " + (error.message || "Unknown error"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const grantEmergencyAccess = async (providerAddr) => {
+    if (!contract || !account) {
+      setMessage("Please connect your wallet first.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await contract.methods
+        .grantEmergencyAccess(patientID, providerAddr || providerAddress)
+        .send({ from: account });
+      setMessage("Emergency access granted for 24 hours.");
+      fetchEmergencyRequests();
+      checkAccessStatus();
+    } catch (error) {
+      console.error(error);
+      setMessage("Failed to grant emergency access: " + (error.message || "Unknown error"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchEmergencyRequests = async () => {
+    if (!contract || !account || !patientID) return;
+
+    try {
+      const result = await contract.methods
+        .getEmergencyRequests(patientID)
+        .call({ from: account });
+
+      const { providers, reasons, requestedAt, approved } = result;
+      
+      const requests = providers.map((provider, index) => ({
+        provider,
+        reason: reasons[index],
+        requestedAt: parseInt(requestedAt[index]),
+        approved: approved[index]
+      }));
+
+      setEmergencyRequests(requests);
+    } catch (error) {
+      console.error('Error fetching emergency requests:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (contract && account && patientID) {
+      fetchEmergencyRequests();
+    }
+  }, [contract, account, patientID]);
 
   // Show login/register if not authenticated
   if (!isAuthenticated) {
@@ -200,52 +385,180 @@ function App() {
         >
           IPFS Upload
         </button>
+        <button
+          className={activeTab === "files" ? "tab active" : "tab"}
+          onClick={() => setActiveTab("files")}
+        >
+          Files
+        </button>
+        <button
+          className={activeTab === "audit" ? "tab active" : "tab"}
+          onClick={() => setActiveTab("audit")}
+        >
+          Audit Logs
+        </button>
       </div>
 
       {activeTab === "blockchain" && (
         <div className="blockchain-section">
           <h2>Patient Data Access DApp</h2>
-          {message && <p className="message">{message}</p>}
+          {message && <p className={`message ${message.includes("successfully") ? "success" : ""}`}>{message}</p>}
           <p className="account-info">Connected Account: {account || "Not connected"}</p>
 
+          {accessStatus !== null && (
+            <div className={`access-status ${accessStatus ? "granted" : "denied"}`}>
+              Access Status: {accessStatus ? "✅ GRANTED" : "❌ DENIED"}
+            </div>
+          )}
+
           <div className="form-section">
-            <input
-              type="text"
-              placeholder="Patient ID"
-              value={patientID}
-              onChange={(e) => setPatientID(e.target.value)}
-              className="input-field"
-            />
-            <br />
-            <input
-              type="text"
-              placeholder="Provider Address"
-              value={providerAddress}
-              onChange={(e) => setProviderAddress(e.target.value)}
-              className="input-field"
-            />
-            <br /><br />
+            <div className="input-group">
+              <label>Patient ID:</label>
+              <input
+                type="text"
+                placeholder="Enter Patient ID"
+                value={patientID}
+                onChange={(e) => setPatientID(e.target.value)}
+                className="input-field"
+              />
+            </div>
+
+            <div className="input-group">
+              <label>Provider Address:</label>
+              <input
+                type="text"
+                placeholder="Enter Provider Address (0x...)"
+                value={providerAddress}
+                onChange={(e) => setProviderAddress(e.target.value)}
+                className="input-field"
+              />
+            </div>
+
             <div className="button-group">
-              <button onClick={registerPatient} className="action-button">
-                Register Patient
+              <button onClick={registerPatient} className="action-button" disabled={loading}>
+                {loading ? "Processing..." : "Register Patient"}
               </button>
-              <button onClick={grantAccess} className="action-button">
-                Grant Access
-              </button>
-              <button onClick={revokeAccess} className="action-button">
-                Revoke Access
-              </button>
-              <button onClick={checkAccess} className="action-button">
-                Check Access
+              <button onClick={checkAccess} className="action-button" disabled={loading}>
+                {loading ? "Checking..." : "Check Access"}
               </button>
             </div>
+
+            <div className="section-divider">
+              <h3>Grant Access</h3>
+            </div>
+
+            <div className="button-group">
+              <button onClick={grantAccess} className="action-button" disabled={loading}>
+                {loading ? "Processing..." : "Grant Permanent Access"}
+              </button>
+            </div>
+
+            <div className="input-group">
+              <label>Expiration Date:</label>
+              <input
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+                className="input-field"
+              />
+            </div>
+
+            <div className="input-group">
+              <label>Expiration Time:</label>
+              <input
+                type="time"
+                value={expiryTime}
+                onChange={(e) => setExpiryTime(e.target.value)}
+                className="input-field"
+              />
+            </div>
+
+            <div className="button-group">
+              <button onClick={grantAccessWithExpiry} className="action-button" disabled={loading}>
+                {loading ? "Processing..." : "Grant Access with Expiry"}
+              </button>
+              <button onClick={revokeAccess} className="action-button revoke" disabled={loading}>
+                {loading ? "Processing..." : "Revoke Access"}
+              </button>
+            </div>
+
+            <div className="section-divider">
+              <h3>Emergency Access</h3>
+            </div>
+
+            <div className="input-group">
+              <label>Emergency Reason:</label>
+              <textarea
+                placeholder="Enter reason for emergency access request..."
+                value={emergencyReason}
+                onChange={(e) => setEmergencyReason(e.target.value)}
+                className="input-field textarea"
+                rows="3"
+              />
+            </div>
+
+            <div className="button-group">
+              <button onClick={requestEmergencyAccess} className="action-button emergency" disabled={loading}>
+                {loading ? "Processing..." : "Request Emergency Access"}
+              </button>
+            </div>
+
+            {emergencyRequests.length > 0 && (
+              <div className="emergency-requests">
+                <h4>Emergency Access Requests:</h4>
+                {emergencyRequests.map((req, index) => (
+                  <div key={index} className={`emergency-request-card ${req.approved ? "approved" : ""}`}>
+                    <p><strong>Provider:</strong> {req.provider.substring(0, 6)}...{req.provider.substring(38)}</p>
+                    <p><strong>Reason:</strong> {req.reason}</p>
+                    <p><strong>Requested:</strong> {new Date(req.requestedAt * 1000).toLocaleString()}</p>
+                    <p><strong>Status:</strong> {req.approved ? "✅ Approved" : "⏳ Pending"}</p>
+                    {!req.approved && (
+                      <button
+                        onClick={() => grantEmergencyAccess(req.provider)}
+                        className="action-button emergency-grant"
+                        disabled={loading}
+                      >
+                        Grant Emergency Access
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {activeTab === "ipfs" && (
         <div className="ipfs-section">
-          <IPFSUpload />
+          <IPFSUpload 
+            contract={contract}
+            account={account}
+            patientID={patientID}
+            onUploadSuccess={() => {
+              setMessage("File uploaded successfully!");
+            }}
+          />
+        </div>
+      )}
+
+      {activeTab === "files" && (
+        <div className="files-section">
+          <FileList 
+            contract={contract}
+            account={account}
+            patientID={patientID}
+          />
+        </div>
+      )}
+
+      {activeTab === "audit" && (
+        <div className="audit-section">
+          <AuditLogViewer 
+            contract={contract}
+            account={account}
+            patientID={patientID}
+          />
         </div>
       )}
     </div>
