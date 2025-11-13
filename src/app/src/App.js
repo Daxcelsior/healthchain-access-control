@@ -558,6 +558,7 @@ function App() {
             contract={contract}
             account={account}
             patientID={patientID}
+            onPatientIDChange={(newID) => setPatientID(newID)}
           />
         </div>
       )}

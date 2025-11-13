@@ -2,15 +2,15 @@
 
 ## Current Implementation (What's ACTUALLY Working)
 
-### ✅ 1. Authentication: **DynamoDB** (AWS)
+### ✅ 1. Authentication: **MongoDB**
 **Status:** ✅ IMPLEMENTED AND READY
 - User registration/login
 - JWT tokens
 - Password hashing
-- **File:** `backend/models/UserDynamoDB.js`
+- **File:** `backend/models/User.js`
 - **Routes:** `backend/routes/auth.js`
 
-**What you need:** Complete DynamoDB setup (create table, add credentials)
+**What you need:** Add MongoDB connection string to `.env` file
 
 ---
 
@@ -66,11 +66,11 @@
 
 ## What We're NOT Using (Yet)
 
-### ❌ MongoDB
-**Status:** NOT USED
-- We migrated to DynamoDB instead
-- MongoDB code removed/replaced
-- **Reason:** Better AWS integration, uses student credits
+### ✅ MongoDB
+**Status:** NOW USING
+- User authentication
+- Stores user accounts
+- Traditional database
 
 ### ❌ AWS S3 (for files)
 **Status:** NOT IMPLEMENTED (but can be added)
@@ -170,19 +170,19 @@
 ## Simple Summary
 
 ### ✅ What's Implemented:
-1. **DynamoDB** - Authentication ✅
+1. **MongoDB** - Authentication ✅
 2. **Blockchain** - Healthcare data ✅
 3. **IPFS** - File storage ✅ (YES, we're using it!)
 4. **React** - Frontend ✅
 5. **Express** - Backend ✅
 
 ### ❌ What's NOT Used:
-1. **MongoDB** - Replaced by DynamoDB
+1. **DynamoDB** - Switched back to MongoDB
 2. **AWS S3** - Not implemented (IPFS is used instead)
 3. **AWS Lambda** - Not implemented (Express on EC2 instead)
 
 ### 📋 What You Need to Do:
-1. **Set up DynamoDB** (create table, add credentials)
+1. **Add MongoDB connection string** to `backend/.env`
 2. **Get Pinata token** (for IPFS)
 3. **Deploy smart contract** (to your network)
 4. **Deploy frontend** (to Amplify)

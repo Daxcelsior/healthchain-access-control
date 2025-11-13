@@ -7,7 +7,9 @@ const Register = ({ onRegisterSuccess }) => {
     username: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    name: '',
+    role: 'patient'
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -58,6 +60,17 @@ const Register = ({ onRegisterSuccess }) => {
         {error && <div className="error-message">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
+            <label>Full Name</label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+              placeholder="Enter your full name"
+            />
+          </div>
+          <div className="form-group">
             <label>Username</label>
             <input
               type="text"
@@ -79,6 +92,20 @@ const Register = ({ onRegisterSuccess }) => {
               required
               placeholder="Enter your email"
             />
+          </div>
+          <div className="form-group">
+            <label>Role</label>
+            <select
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              required
+              className="input-field"
+            >
+              <option value="patient">Patient</option>
+              <option value="provider">Healthcare Provider</option>
+              <option value="admin">Admin</option>
+            </select>
           </div>
           <div className="form-group">
             <label>Password</label>

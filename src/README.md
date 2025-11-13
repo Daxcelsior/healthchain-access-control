@@ -8,7 +8,7 @@ A full-stack blockchain healthcare application with user authentication, patient
 
 ## Architecture
 
-- **Authentication:** DynamoDB (AWS) - Traditional username/password for better UX
+- **Authentication:** MongoDB - Traditional username/password for better UX
 - **Healthcare Data:** Blockchain (Ethereum) - Immutable patient records and access control
 - **File Storage:** IPFS (Pinata) - Decentralized file storage with encryption
 - **Frontend:** React - User interface
@@ -23,18 +23,15 @@ cd backend
 npm install
 ```
 
-Follow `backend/DYNAMODB_SETUP.md` to set up DynamoDB.
-
 Create `.env`:
 ```env
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your-key
-AWS_SECRET_ACCESS_KEY=your-secret
-DYNAMODB_TABLE_NAME=healthchain-users
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/healthchain?retryWrites=true&w=majority
 JWT_SECRET=your-secret
 PINATA_JWT=your-pinata-token
 PORT=5000
 ```
+
+See `backend/MONGODB_SETUP.md` for setup instructions.
 
 ```bash
 npm run dev
@@ -93,9 +90,9 @@ truffle migrate
 ## Tech Stack
 
 - **Frontend:** React, Web3.js, Axios, Crypto-JS
-- **Backend:** Express, DynamoDB, JWT, Multer
+- **Backend:** Express, MongoDB (Mongoose), JWT, Multer
 - **Blockchain:** Solidity, Truffle, Web3
-- **Storage:** IPFS (Pinata), DynamoDB
+- **Storage:** IPFS (Pinata), MongoDB
 - **Deployment:** AWS Amplify, EC2
 
 ## License

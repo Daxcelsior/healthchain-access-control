@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import './AuditLogViewer.css';
 
-const AuditLogViewer = ({ contract, account, patientID }) => {
+const AuditLogViewer = ({ contract, account, patientID: propPatientID, onPatientIDChange }) => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [localPatientID, setLocalPatientID] = useState(propPatientID || '');
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
@@ -13,43 +14,95 @@ const AuditLogViewer = ({ contract, account, patientID }) => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  
+  // Use propPatientID if provided, otherwise use local state
+  const patientID = propPatientID || localPatientID;
 
   useEffect(() => {
-    if (contract && patientID) {
+    // Only fetch if we have both contract and a non-empty patientID
+    if (contract && patientID && patientID.trim() !== '') {
       fetchAuditLogs();
+    } else {
+      // Clear logs if conditions aren't met
+      setLogs([]);
+      if (!contract) {
+        setError('Smart contract not loaded. Please connect your wallet.');
+      } else if (!patientID || patientID.trim() === '') {
+        setError('Please enter a Patient ID in the Blockchain section to view audit logs.');
+      }
     }
-  }, [contract, patientID]);
+  }, [contract, patientID, account]);
 
   const fetchAuditLogs = async () => {
-    if (!contract || !patientID) return;
+    if (!contract) {
+      setError('Smart contract not loaded. Please connect your wallet.');
+      return;
+    }
+    
+    if (!patientID || patientID.trim() === '') {
+      setError('Please enter a Patient ID to view audit logs.');
+      setLogs([]);
+      return;
+    }
     
     setLoading(true);
     setError('');
     
     try {
+      console.log('Fetching audit logs for patient:', patientID);
       let result;
       
       if (filters.startDate && filters.endDate) {
         const startTime = Math.floor(new Date(filters.startDate).getTime() / 1000);
         const endTime = Math.floor(new Date(filters.endDate).getTime() / 1000);
+        console.log('Using date range filter:', { startTime, endTime });
         result = await contract.methods
           .getAccessHistoryByDateRange(patientID, startTime, endTime)
-          .call();
+          .call({ from: account });
       } else {
+        console.log('Fetching all audit logs');
         result = await contract.methods
           .getPatientAuditTrail(patientID)
-          .call();
+          .call({ from: account });
       }
       
-      const { timestamps, actors, actionTypes, successes, providers, details } = result;
+      console.log('Audit log result:', result);
+      
+      // Handle the result - it might be an object with arrays or just arrays
+      let timestamps, actors, actionTypes, successes, providers, details;
+      
+      if (Array.isArray(result)) {
+        // If result is an array of arrays
+        [timestamps, actors, actionTypes, successes, providers, details] = result;
+      } else {
+        // If result is an object
+        timestamps = result.timestamps || result[0] || [];
+        actors = result.actors || result[1] || [];
+        actionTypes = result.actionTypes || result[2] || [];
+        successes = result.successes || result[3] || [];
+        providers = result.providers || result[4] || [];
+        details = result.details || result[5] || [];
+      }
+      
+      console.log('Parsed audit log data:', {
+        timestamps: timestamps?.length || 0,
+        actors: actors?.length || 0,
+        actionTypes: actionTypes?.length || 0
+      });
+      
+      if (!timestamps || timestamps.length === 0) {
+        setLogs([]);
+        setError('No audit logs found for this patient. Perform some actions (register patient, grant access, etc.) to generate logs.');
+        return;
+      }
       
       let auditLogs = timestamps.map((timestamp, index) => ({
         timestamp: parseInt(timestamp),
-        actor: actors[index],
-        actionType: actionTypes[index],
-        success: successes[index],
-        provider: providers[index],
-        details: details[index]
+        actor: actors[index] || '0x0000000000000000000000000000000000000000',
+        actionType: actionTypes[index] || 'UNKNOWN',
+        success: successes[index] !== undefined ? successes[index] : true,
+        provider: providers[index] || '0x0000000000000000000000000000000000000000',
+        details: details[index] || ''
       }));
       
       // Apply filters
@@ -69,9 +122,32 @@ const AuditLogViewer = ({ contract, account, patientID }) => {
       auditLogs.sort((a, b) => b.timestamp - a.timestamp);
       
       setLogs(auditLogs);
+      if (auditLogs.length === 0) {
+        setError('No audit logs found for this patient.');
+      }
     } catch (err) {
       console.error('Error fetching audit logs:', err);
-      setError('Failed to fetch audit logs. Make sure you have access to this patient.');
+      console.error('Error details:', {
+        message: err.message,
+        code: err.code,
+        data: err.data
+      });
+      
+      let errorMessage = 'Failed to fetch audit logs. ';
+      if (err.message) {
+        if (err.message.includes('Patient does not exist')) {
+          errorMessage += 'Patient not found. Please register the patient first.';
+        } else if (err.message.includes('Unauthorized')) {
+          errorMessage += 'You do not have access to view this patient\'s audit logs.';
+        } else {
+          errorMessage += err.message;
+        }
+      } else {
+        errorMessage += 'Make sure the patient ID is correct and you have access.';
+      }
+      
+      setError(errorMessage);
+      setLogs([]);
     } finally {
       setLoading(false);
     }
@@ -123,9 +199,66 @@ const AuditLogViewer = ({ contract, account, patientID }) => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedLogs = logs.slice(startIndex, endIndex);
 
+  const handlePatientIDChange = (e) => {
+    const newID = e.target.value;
+    setLocalPatientID(newID);
+    if (onPatientIDChange) {
+      onPatientIDChange(newID);
+    }
+  };
+
   return (
     <div className="audit-log-viewer">
       <h3>Audit Log Viewer</h3>
+      
+      {!contract && (
+        <div className="error-message">
+          ⚠️ Smart contract not loaded. Please connect your MetaMask wallet.
+        </div>
+      )}
+      
+      {contract && (
+        <div style={{ marginBottom: '15px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+            Patient ID:
+          </label>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <input
+              type="text"
+              value={patientID}
+              onChange={handlePatientIDChange}
+              placeholder="Enter Patient ID (e.g., PATIENT001)"
+              style={{
+                flex: 1,
+                padding: '8px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                fontSize: '14px'
+              }}
+            />
+            <button
+              onClick={fetchAuditLogs}
+              disabled={!patientID || patientID.trim() === '' || loading}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: patientID && patientID.trim() !== '' ? '#6366f1' : '#ccc',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: patientID && patientID.trim() !== '' ? 'pointer' : 'not-allowed',
+                fontSize: '14px'
+              }}
+            >
+              {loading ? 'Loading...' : 'Load Logs'}
+            </button>
+          </div>
+          {patientID && (
+            <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
+              Viewing audit logs for: <strong>{patientID}</strong>
+            </div>
+          )}
+        </div>
+      )}
       
       {error && <div className="error-message">{error}</div>}
       

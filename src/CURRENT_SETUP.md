@@ -10,11 +10,11 @@ You've chosen the **perfect architecture for healthcare apps**:
 
 ### ✅ What's Currently Set Up:
 
-1. **Authentication: DynamoDB** (AWS)
+1. **Authentication: MongoDB**
    - User registration/login with username/password
    - JWT token-based sessions
    - Password hashing (bcrypt)
-   - **Status:** ✅ Code migrated and ready
+   - **Status:** ✅ Code ready
 
 2. **Healthcare Data: Blockchain**
    - Smart contract deployed
@@ -28,52 +28,21 @@ You've chosen the **perfect architecture for healthcare apps**:
    - IPFS hash storage on blockchain
    - **Status:** ✅ Working
 
-## MongoDB vs DynamoDB
+## Current Setup: MongoDB ✅
 
-### Current Setup: DynamoDB ✅
-
-**Why DynamoDB:**
-- ✅ Already migrated and working
-- ✅ Uses your AWS student credits
-- ✅ Serverless (no server management)
-- ✅ Always free tier (25 GB)
-- ✅ Same functionality as MongoDB
-- ✅ Better AWS integration
-
-**What DynamoDB Does:**
+**What MongoDB Does:**
 - Stores user accounts (username, email, password)
 - Handles authentication (login/register)
-- **Same purpose as MongoDB** - just different technology
-
-### Alternative: MongoDB
-
-If you prefer MongoDB:
-- ✅ More familiar to developers
-- ✅ Easier to query/debug
-- ✅ Free tier available (MongoDB Atlas)
-- ⚠️ Would need to revert code changes
-- ⚠️ Separate service (not AWS)
-
-## Recommendation
-
-**Keep DynamoDB** because:
-1. ✅ Already set up and working
-2. ✅ Uses your AWS student credits
-3. ✅ Same functionality as MongoDB
-4. ✅ Better for AWS ecosystem
-5. ✅ Free tier is generous
-
-**Both serve the same purpose:** Traditional authentication for better UX!
+- Traditional database (familiar to developers)
+- Easy to query and debug
 
 ## What You Need to Complete
 
-### 1. DynamoDB Setup (If Not Done)
+### 1. MongoDB Setup (If Not Done)
 
-Follow `backend/DYNAMODB_SETUP.md`:
-- [ ] Create DynamoDB table: `healthchain-users`
-- [ ] Create GSI index: `GSI1`
-- [ ] Get AWS credentials
-- [ ] Add credentials to `backend/.env`
+Follow `backend/MONGODB_SETUP.md`:
+- [ ] Add MongoDB connection string to `backend/.env`
+- [ ] Make sure IP is whitelisted in MongoDB Atlas
 - [ ] Test connection
 
 ### 2. Test Authentication
@@ -102,7 +71,7 @@ Test:
 │     USER AUTHENTICATION                 │
 │  (Traditional Login - Better UX)        │
 │                                         │
-│  ✅ DynamoDB (AWS)                      │
+│  ✅ MongoDB                             │
 │  • Username/Password                    │
 │  • JWT Tokens                           │
 │  • User Accounts                        │
@@ -131,14 +100,14 @@ Test:
 ## Summary
 
 **Your architecture is perfect:**
-- ✅ **DynamoDB** = Traditional auth (better UX) 
+- ✅ **MongoDB** = Traditional auth (better UX) 
 - ✅ **Blockchain** = Healthcare data (trustworthy)
 - ✅ **Hybrid approach** = Best of both worlds
 
 **Next Steps:**
-1. Complete DynamoDB setup (if needed)
+1. Add MongoDB connection string to `.env` file
 2. Test everything locally
 3. Deploy to AWS (optional)
 
-Everything is ready! Just complete the DynamoDB setup and you're good to go! 🚀
+Everything is ready! Just add your MongoDB connection string to `.env` and you're good to go! 🚀
 

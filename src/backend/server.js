@@ -1,7 +1,7 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 
 // Load environment variables
 dotenv.config();
@@ -22,38 +22,21 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
-// Initialize DynamoDB connection
-const dynamoDBClient = new DynamoDBClient({
-  region: process.env.AWS_REGION || 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
+// Connect to MongoDB
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/healthchain';
+
+mongoose.connect(MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => {
+  console.log('✅ Connected to MongoDB');
+})
+.catch((error) => {
+  console.error('❌ MongoDB connection error:', error.message);
+  console.log('💡 Make sure MONGODB_URI is correct in .env file');
+  console.log('💡 Check your MongoDB connection string');
 });
-
-// Test DynamoDB connection
-const testDynamoDBConnection = async () => {
-  try {
-    // Simple connection test - list tables
-    const { DynamoDB } = require('@aws-sdk/client-dynamodb');
-    const client = new DynamoDB({
-      region: process.env.AWS_REGION || 'us-east-1',
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      },
-    });
-    
-    await client.listTables({});
-    console.log('✅ Connected to DynamoDB');
-  } catch (error) {
-    console.error('❌ DynamoDB connection error:', error.message);
-    console.log('⚠️  Make sure AWS credentials are set in .env file');
-  }
-};
-
-// Test connection on startup
-testDynamoDBConnection();
 
 const PORT = process.env.PORT || 5000;
 
