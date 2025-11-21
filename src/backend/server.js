@@ -25,17 +25,23 @@ app.get('/api/health', (req, res) => {
 // Connect to MongoDB
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/healthchain';
 
-mongoose.connect(MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(MONGODB_URI)
 .then(() => {
   console.log('✅ Connected to MongoDB');
 })
 .catch((error) => {
   console.error('❌ MongoDB connection error:', error.message);
-  console.log('💡 Make sure MONGODB_URI is correct in .env file');
-  console.log('💡 Check your MongoDB connection string');
+  if (error.message.includes('authentication failed') || error.message.includes('bad auth')) {
+    console.log('\n💡 Authentication Error - Possible fixes:');
+    console.log('   1. Go to MongoDB Atlas → Database Access');
+    console.log('   2. Verify the username and password are correct');
+    console.log('   3. Get a fresh connection string: Clusters → Connect → Connect your application');
+    console.log('   4. Replace <password> in the connection string with your actual password');
+    console.log('   5. Make sure to add /healthchain before the ? in the connection string');
+  } else {
+    console.log('💡 Make sure MONGODB_URI is correct in .env file');
+    console.log('💡 Check your MongoDB connection string');
+  }
 });
 
 const PORT = process.env.PORT || 5000;
